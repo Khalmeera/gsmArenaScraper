@@ -4,52 +4,35 @@ import json
 import time
 import random
 
-base = ('https://www.gsmarena.com/')
-makers = requests.get('https://www.gsmarena.com/makers.php3')
+# Set the User-Agent header to a browser-like string to avoid being blocked
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36 Edg/110.0.1587.57'}
 
-soup = BeautifulSoup(makers.text, 'html.parser')
+# Send a request to the website to get the phone details
+phoneDetails = requests.get(
+    "https://www.gsmarena.com/samsung_galaxy_a14-12151.php", headers=headers)
 
-manufacturerList = []
-phoneList = []
+# Wait for a random time between 1-3 seconds before sending the next request
+time.sleep(random.uniform(1, 3))
 
-print("Scraping of GSM Arena Phone URLs is in progress, kindly wait for 5 minutes. To terminate, press CTRL + C. You will get a json file containing the URLs shortly")
+# Create empty lists to store the phone information and specifications
+information = []
+specifications = []
 
-for link in soup.find_all('div', class_="st-text"):
-    for a in link.find_all('a', href=True):
-        manufacturerList.append(base+a['href'])
+# Use BeautifulSoup to parse the HTML response and extract the information and specifications
+soup = BeautifulSoup(phoneDetails.text, 'html.parser')
+for header in soup.find_all('td', class_="ttl"):
+    information.append(header.get_text())
+for specs in soup.find_all('td', class_="nfo"):
+    specifications.append(specs.get_text())
 
-for manufacturer in manufacturerList:
+# Combine the information and specifications into a dictionary
+phoneSpec = dict(zip(information, specifications))
 
-    time.sleep(random.randint(1, 3))
-
-    phonesForEachManufacturer = requests.get(manufacturer)
-    soup = BeautifulSoup(phonesForEachManufacturer.text, 'html.parser')
-
-    try:
-        numPages = len(soup.find_all(
-            'div', class_='nav-pages')[0].find_all('a'))
-    except IndexError:
-        numPages = 1
-
-    for pageNum in range(1, numPages+1):
-
-        manufacturerId = manufacturer.split('-')[2].split('.')[0]
-
-        if pageNum == 1:
-            url = manufacturer
-        else:
-            url = f"{manufacturer[:-4]}-f-{manufacturerId}-0-p{pageNum}.php"
-
-        time.sleep(random.randint(2, 4))
-        page = requests.get(url)
-        soupPage = BeautifulSoup(page.text, 'html.parser')
-
-        for phoneLink in soupPage.find_all('div', class_="makers"):
-            for a in phoneLink.find_all('a', href=True):
-                phoneList.append(base+a['href'])
-
+# Write the dictionary to a JSON file named "output.json"
 with open("output.json", "w") as outfile:
-    json.dump(phoneList, outfile)
+    json.dump(phoneSpec, outfile)
 
-print("Done! I have found: "+str(len(phoneList)) +
-      " urls, you can find the json file in the script directory. Have fun!")
+# Print a message indicating that the scraping is complete
+print(
+    f"Scraping of {phoneSpec['Models']} Phone specifications Complete! Enjoy!")
